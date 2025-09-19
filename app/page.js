@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import CategoryFilters from '@/components/CategoryFilters';
+import CategoryFilters from '../components/CategoryFilters'; // HATA DÜZELTMESİ: Eksik olan import satırı
 
 const MapView = dynamic(
-  () => import('@/components/MapView'),
+  () => import('../components/MapView'),
   { 
     ssr: false,
     loading: () => <div className="w-full h-full bg-gray-200 flex items-center justify-center"><p>Harita Yükleniyor...</p></div> 
@@ -13,19 +13,18 @@ const MapView = dynamic(
 );
 
 export default function HomePage() {
-  const [allBusinesses, setAllBusinesses] = useState([]); // Tüm mekanları burada tutacağız
-  const [filteredBusinesses, setFilteredBusinesses] = useState([]); // Filtrelenmiş mekanları burada tutacağız
-  const [selectedCategory, setSelectedCategory] = useState('Tümü'); // Seçili kategoriyi takip edeceğiz
+  const [allBusinesses, setAllBusinesses] = useState([]);
+  const [filteredBusinesses, setFilteredBusinesses] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('Tümü');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // API'den tüm verileri sadece bir kez çekiyoruz
-    fetch('/api/businesses?limit=5000') // Limiti artıralım ki tüm veriler gelsin
+    fetch('/api/businesses?limit=5000')
       .then(res => res.json())
       .then(data => {
         const businessesData = data.data || [];
         setAllBusinesses(businessesData);
-        setFilteredBusinesses(businessesData); // Başlangıçta hepsi görünsün
+        setFilteredBusinesses(businessesData);
         setLoading(false);
       })
       .catch(error => {
@@ -34,45 +33,39 @@ export default function HomePage() {
       });
   }, []);
 
-  // Kategori seçildiğinde çalışacak fonksiyon
   const handleSelectCategory = (category) => {
-    setSelectedCategory(category); // Seçilen kategoriyi state'e ata
+    setSelectedCategory(category);
     if (category === 'Tümü') {
-      setFilteredBusinesses(allBusinesses); // 'Tümü' seçilirse tüm mekanları göster
+      setFilteredBusinesses(allBusinesses);
     } else {
-      // Değilse, sadece o kategoriye ait olanları filtrele ve göster
       const filtered = allBusinesses.filter(business => business.category === category);
       setFilteredBusinesses(filtered);
     }
   };
 
   return (
-    <div>
-      <h1 className="text-4xl font-bold text-center my-4">Çanakkale Mekan Rehberi</h1>
-      
-      {/* CategoryFilters bileşenine gerekli bilgileri gönderiyoruz */}
-      <CategoryFilters 
-        selectedCategory={selectedCategory} 
-        onSelectCategory={handleSelectCategory} 
-      />
-
-      <div className="w-full h-[500px] border rounded-lg overflow-hidden mt-4">
-        {/* Haritaya her zaman filtrelenmiş mekanları gönderiyoruz */}
-        <MapView businesses={filteredBusinesses} />
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-2xl font-semibold">Mekanlar</h2>
+    <div className="flex" style={{ height: 'calc(100vh - 73px)' }}>
+      <div className="w-2/5 overflow-y-auto p-4 border-r bg-gray-50">
+        <h1 className="text-2xl font-bold mb-4">Mekanlar</h1>
+        <CategoryFilters 
+          selectedCategory={selectedCategory} 
+          onSelectCategory={handleSelectCategory} 
+        />
         {loading ? (
-          <p>Mekan listesi yükleniyor...</p>
+          <p className="text-center mt-8">Mekan listesi yükleniyor...</p>
         ) : (
-          <ul className="list-disc pl-5">
-            {/* Listede de her zaman filtrelenmiş mekanları gösteriyoruz */}
+          <ul className="space-y-2 mt-4">
             {filteredBusinesses.map(business => (
-              <li key={business._id}>{business.name} - <span className="text-gray-500">{business.category}</span></li>
+              <li key={business._id} className="p-3 border rounded-lg bg-white hover:shadow-md cursor-pointer transition-all">
+                <h3 className="font-bold text-gray-800">{business.name}</h3>
+                <p className="text-sm text-gray-500 capitalize">{business.category}</p>
+              </li>
             ))}
           </ul>
         )}
+      </div>
+      <div className="flex-grow">
+        <MapView businesses={filteredBusinesses} />
       </div>
     </div>
   );
