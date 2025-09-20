@@ -102,13 +102,12 @@ export default function Page() {
           </div>
         ))}
       </main>
-      {/* Banner reklam alanı */}
-      <section className="w-full py-8 flex justify-center items-center bg-yellow-50 dark:bg-yellow-900 rounded-xl shadow mt-10 mb-6">
-        <div className="bg-yellow-400 dark:bg-yellow-600 text-white px-10 py-6 rounded-2xl shadow font-bold text-xl flex items-center gap-6">
-          <img src="/vercel.svg" alt="Sponsor" className="h-10 w-10" />
-          <span>Reklam Alanı: Mekanınızı öne çıkarın!</span>
+      {/* Harita bileşeni (küçük ve sade) */}
+      <div className="max-w-xl mx-auto my-8 rounded-xl overflow-hidden shadow-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="w-full h-72"> {/* 288px yükseklik, responsive */}
+          <MapView businesses={businesses} />
         </div>
-      </section>
+      </div>
       {/* Ziyaretçi sayaç bileşeni */}
       <footer className="w-full text-center py-6 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mt-12 rounded-t-2xl shadow-lg">
         <span className="text-lg font-semibold">Siteye toplam <b>{visitorCount}</b> kişi girdi.</span>
