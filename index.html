@@ -1,0 +1,347 @@
+<!DOCTYPE ahtml>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Çanakkale Mekanları</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+
+        /* Yorum ve harita için özel stiller */
+        .map-container,
+        .review-section {
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background-color: white;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+
+<body class="p-6 md:p-12">
+    <div id="root" class="max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">Çanakkale Mekanları</h1>
+            <p class="text-lg text-gray-600 mt-2">En sevdiğin mekanları keşfet ve yorum yap.</p>
+        </header>
+
+        <!-- Filtreleme Bölümü -->
+        <div id="filters" class="flex flex-wrap gap-2 justify-center mb-6">
+            <button class="filter-btn bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors" data-category="Tümü">Tümü</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-300 transition-colors" data-category="Restoran">Restoran</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-300 transition-colors" data-category="Cafe">Cafe</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full hover:bg-gray-300 transition-colors" data-category="Tarihi Mekan">Tarihi Mekan</button>
+        </div>
+
+        <!-- İşletme Listesi Bölümü -->
+        <div id="business-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- İşletmeler buraya eklenecek -->
+        </div>
+
+        <!-- Yorum Ekleme ve Görüntüleme Bölümü -->
+        <div id="reviews-container" class="mt-8">
+            <!-- Yorumlar buraya eklenecek -->
+        </div>
+
+    </div>
+
+    <!-- Firebase kütüphanesi -->
+    <script type="module">
+        // Firebase ve Firestore importları
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, orderBy, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Hata ayıklama için Firestore loglarını etkinleştir
+        setLogLevel('debug');
+        
+        // Firebase ayarları ve değişken tanımlamaları
+        const firebaseConfig = {
+            apiKey: "AIzaSyC2_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+            authDomain: "canakkale-mekan.firebaseapp.com",
+            projectId: "canakkale-mekan",
+            storageBucket: "canakkale-mekan.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:xxxxxxxxxxxxxxxxxxxx"
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify(firebaseConfig);
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+        
+        const app = initializeApp(JSON.parse(firebaseConfigString));
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        // Kullanıcı kimlik doğrulama
+        // Anonim veya özel token ile oturum açmayı dener
+        if (initialAuthToken) {
+            signInWithCustomToken(auth, initialAuthToken).catch((error) => console.error("Firebase Custom Auth hatası:", error));
+        } else {
+            signInAnonymously(auth).catch((error) => console.error("Firebase Anonim Auth hatası:", error));
+        }
+
+        // Kullanıcının kimlik doğrulama durumunu beklemek için bir Promise oluştur
+        // Bu, Firestore işlemlerinin yalnızca kullanıcı oturum açtıktan sonra başlamasını sağlar.
+        const authReadyPromise = new Promise(resolve => {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    console.log('Kullanıcı başarıyla doğrulandı:', user.uid);
+                    resolve(user);
+                } else {
+                    console.log('Kimlik doğrulama bekleniyor...');
+                }
+            });
+        });
+
+        // Uygulama yüklenirken gösterilecek yükleme mesajı
+        document.getElementById('reviews-container').innerHTML = `
+            <div class="review-section text-center text-gray-500">
+                <p>Yorumlar yükleniyor...</p>
+            </div>
+        `;
+        
+        // Auth durumu hazır olduğunda Firestore işlemlerini başlat
+        authReadyPromise.then(user => {
+            const userId = user.uid;
+
+            // İşletme verileri
+            const businesses = [{
+                id: '1',
+                name: 'Kordon',
+                category: 'Tarihi Mekan',
+                description: 'Çanakkale\'nin eşsiz manzarasına sahip sahil şeridi.',
+                rating: 4.8
+            }, {
+                id: '2',
+                name: 'Kilitbahir Kalesi',
+                category: 'Tarihi Mekan',
+                description: 'Çanakkale Boğazı\'nın en önemli kalelerinden biri.',
+                rating: 4.5
+            }, {
+                id: '3',
+                name: 'Kadir Usta',
+                category: 'Restoran',
+                description: 'Tarihi köfteci, bölgenin en lezzetli köftelerini sunar.',
+                rating: 4.7
+            }, {
+                id: '4',
+                name: 'Yalova Sahil Tesisleri',
+                category: 'Cafe',
+                description: 'Boğaz manzarası eşliğinde kahve keyfi için ideal.',
+                rating: 4.2
+            }, ];
+    
+            const businessListEl = document.getElementById('business-list');
+            const filterBtns = document.querySelectorAll('.filter-btn');
+    
+            // İşletmeleri listeleme fonksiyonu
+            function renderBusinesses(filteredBusinesses) {
+                businessListEl.innerHTML = '';
+                filteredBusinesses.forEach(business => {
+                    const businessEl = document.createElement('div');
+                    businessEl.className = 'bg-white p-6 rounded-xl shadow-lg transform transition-transform duration-300 hover:scale-105';
+                    businessEl.innerHTML = `
+                        <h3 class="text-xl font-semibold text-gray-800">${business.name}</h3>
+                        <p class="text-sm text-gray-500 mt-1">${business.category}</p>
+                        <p class="text-gray-700 mt-4">${business.description}</p>
+                        <div class="flex items-center mt-4 text-yellow-500">
+                            <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.683-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.565-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z" />
+                            </svg>
+                            <span class="text-gray-800 font-bold">${business.rating}</span>
+                        </div>
+                    `;
+                    businessListEl.appendChild(businessEl);
+                });
+            }
+    
+            renderBusinesses(businesses); // Başlangıçta tüm işletmeleri listele
+    
+            // Kategori filtreleme işlevi
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterBtns.forEach(b => b.classList.replace('bg-blue-500', 'bg-gray-200'));
+                    filterBtns.forEach(b => b.classList.replace('text-white', 'text-gray-700'));
+                    btn.classList.replace('bg-gray-200', 'bg-blue-500');
+                    btn.classList.replace('text-gray-700', 'text-white');
+    
+                    const category = btn.dataset.category;
+                    if (category === 'Tümü') {
+                        renderBusinesses(businesses);
+                    } else {
+                        const filtered = businesses.filter(b => b.category === category);
+                        renderBusinesses(filtered);
+                    }
+                });
+            });
+    
+    
+            // Firestore Yorum Ekleme ve Görüntüleme
+            const reviewsContainer = document.getElementById('reviews-container');
+    
+            // Yorum ekleme formunu oluştur
+            function createReviewForm() {
+                const formHtml = `
+                    <div class="review-section mt-8">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Bir Yorum Bırak</h2>
+                        <form id="review-form" class="space-y-4">
+                            <div>
+                                <label for="review-business" class="block text-sm font-medium text-gray-700">İşletme Adı</label>
+                                <select id="review-business" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    ${businesses.map(b => `<option value="${b.name}">${b.name}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label for="review-text" class="block text-sm font-medium text-gray-700">Yorumunuz</label>
+                                <textarea id="review-text" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Yorumunuzu buraya yazın..."></textarea>
+                            </div>
+                            <div>
+                                <label for="review-rating" class="block text-sm font-medium text-gray-700">Puanınız (1-5)</label>
+                                <input type="number" id="review-rating" min="1" max="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="5" value="5">
+                            </div>
+                            <button type="submit" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Yorumu Gönder
+                            </button>
+                        </form>
+                    </div>
+                `;
+                reviewsContainer.innerHTML += formHtml;
+    
+                // Form gönderildiğinde
+                document.getElementById('review-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const businessName = document.getElementById('review-business').value;
+                    const reviewText = document.getElementById('review-text').value;
+                    const reviewRating = parseInt(document.getElementById('review-rating').value, 10);
+                    
+                    if (businessName && reviewText && reviewRating) {
+                        try {
+                            // Yorumu Firestore'a kaydetmeden önce kullanıcı kimliğini kontrol et
+                            if (!userId) {
+                                console.error("Yorum gönderme hatası: Kullanıcı kimliği bulunamadı.");
+                                return;
+                            }
+                            
+                            const reviewsCol = collection(db, `/artifacts/${appId}/users/${userId}/reviews`);
+                            
+                            await addDoc(reviewsCol, {
+                                business: businessName,
+                                text: reviewText,
+                                rating: reviewRating,
+                                createdAt: new Date()
+                            });
+                            document.getElementById('review-text').value = '';
+                            document.getElementById('review-rating').value = '5';
+                            // alert('Yorumunuz başarıyla gönderildi!');
+                            // Özel bir modal gösterimi için DOM manipülasyonu
+                            const modal = document.createElement('div');
+                            modal.innerHTML = `
+                                <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+                                    <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                        <div class="mt-3 text-center">
+                                            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                                                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                            </div>
+                                            <h3 class="text-lg leading-6 font-medium text-gray-900">Başarılı!</h3>
+                                            <div class="mt-2 px-7 py-3">
+                                                <p class="text-sm text-gray-500">Yorumunuz başarıyla gönderildi.</p>
+                                            </div>
+                                            <div class="items-center px-4 py-3">
+                                                <button id="close-modal" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500">
+                                                    Kapat
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            document.body.appendChild(modal);
+                            document.getElementById('close-modal').onclick = () => document.body.removeChild(modal);
+                        } catch (error) {
+                            console.error("Yorum gönderme hatası: ", error);
+                            // alert('Yorumunuzu gönderirken bir hata oluştu. Lütfen tekrar deneyin.');
+                            const modal = document.createElement('div');
+                            modal.innerHTML = `
+                                <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+                                    <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                                        <div class="mt-3 text-center">
+                                            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                                                <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
+                                            </div>
+                                            <h3 class="text-lg leading-6 font-medium text-gray-900">Hata!</h3>
+                                            <div class="mt-2 px-7 py-3">
+                                                <p class="text-sm text-gray-500">Yorumunuz gönderilirken bir hata oluştu.</p>
+                                            </div>
+                                            <div class="items-center px-4 py-3">
+                                                <button id="close-modal" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500">
+                                                    Kapat
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                                document.body.appendChild(modal);
+                                document.getElementById('close-modal').onclick = () => document.body.removeChild(modal);
+                        }
+                    }
+                });
+            }
+    
+            // Yorumları görüntüleme
+            function renderReviews() {
+                const reviewsHtml = `
+                    <div class="review-section mt-8">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">Yorumlar</h2>
+                        <div id="review-list" class="space-y-4">
+                            <!-- Yorumlar buraya yüklenecek -->
+                        </div>
+                    </div>
+                `;
+                reviewsContainer.innerHTML = reviewsHtml;
+                const reviewListEl = document.getElementById('review-list');
+    
+                const reviewsCol = collection(db, `/artifacts/${appId}/users/${userId}/reviews`);
+                
+                // onSnapshot ile gerçek zamanlı dinleme
+                // Bu listener bağlantı kesintilerini otomatik olarak yönetir.
+                onSnapshot(reviewsCol, (snapshot) => {
+                    reviewListEl.innerHTML = ''; // Önceki yorumları temizle
+                    snapshot.forEach((doc) => {
+                        const reviewData = doc.data();
+                        const reviewEl = document.createElement('div');
+                        reviewEl.className = 'bg-gray-100 p-4 rounded-lg shadow-sm';
+                        reviewEl.innerHTML = `
+                            <p class="font-semibold text-gray-800">${reviewData.business}</p>
+                            <p class="text-gray-600 mt-1">${reviewData.text}</p>
+                            <div class="flex items-center mt-2 text-yellow-500">
+                                ${Array(reviewData.rating).fill('<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.683-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.565-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118l-2.8-2.034c-.783-.57-.38-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z" /></svg>').join('')}
+                            </div>
+                        `;
+                        reviewListEl.appendChild(reviewEl);
+                    });
+                });
+            }
+    
+            createReviewForm();
+            renderReviews();
+        });
+    </script>
+</body>
+
+</html>
