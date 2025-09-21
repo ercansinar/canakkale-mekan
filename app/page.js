@@ -1,16 +1,15 @@
-// ...existing code...
-import { useEffect, useState } from 'react';
-import { useEffect, useState } from 'react';
+
+
+"use client";
+import { useState, useEffect } from 'react';
+import MapView from './components/MapView';
+import Image from 'next/image';
+import VisitorCounterFooter from './components/VisitorCounterFooter';
+
 
 export default function Page() {
   // ...tüm state ve fonksiyonlar...
-  const [visitorCount, setVisitorCount] = useState(0);
-  useEffect(() => {
-    // Basit localStorage ile sayaç (gerçek uygulamada sunucuya yazılır)
-    const count = Number(localStorage.getItem('siteVisitorCount') || '0') + 1;
-    localStorage.setItem('siteVisitorCount', count);
-    setVisitorCount(count);
-  }, []);
+  // Sayaç işlemini SSR'den ayırmak için alt bileşene taşıyoruz
   return (
     <div className={darkMode ? 'dark bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white min-h-screen' : 'bg-gradient-to-br from-white via-blue-50 to-gray-100 text-gray-900 min-h-screen'}>
       {/* Header */}
@@ -22,21 +21,20 @@ export default function Page() {
           </button>
         </div>
       </header>
-      {/* Banner */}
-      <section className="w-full bg-gradient-to-r from-blue-100 to-yellow-100 dark:from-blue-900 dark:to-yellow-900 py-10 px-6 flex flex-col md:flex-row items-center justify-between gap-8 rounded-b-3xl shadow-xl mb-8">
+      {/* Banner - sadeleştirilmiş */}
+      <section className="w-full bg-gradient-to-r from-blue-100 to-yellow-100 dark:from-blue-900 dark:to-yellow-900 py-8 px-4 flex flex-col md:flex-row items-center justify-between gap-6 rounded-b-3xl shadow-xl mb-8">
         <div className="max-w-xl">
-          <h2 className="text-4xl md:text-5xl font-extrabold text-blue-700 dark:text-yellow-300 mb-3">Çanakkale'nin En Trend Mekanları</h2>
-          <p className="text-lg text-gray-700 dark:text-gray-200 mb-6">Restoran, kafe, otel, tarihi mekan ve daha fazlası. Gerçek kullanıcı yorumları ve puanlarla keşfet!</p>
-          <button className="bg-yellow-400 dark:bg-yellow-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-yellow-500 dark:hover:bg-yellow-700 transition-all duration-200 text-lg">Hemen Keşfet</button>
+          <h2 className="text-3xl md:text-4xl font-bold text-blue-700 dark:text-yellow-300 mb-2">Çanakkale&#39;nin En Trend Mekanları</h2>
+          <p className="text-base text-gray-700 dark:text-gray-200 mb-4">Restoran, kafe, otel, tarihi mekan ve daha fazlası. Gerçek kullanıcı yorumları ve puanlarla keşfet!</p>
         </div>
-        <img src="/window.svg" alt="Banner" className="h-40 md:h-56 drop-shadow-2xl" />
+        <Image src="/window.svg" alt="Banner" width={176} height={176} className="h-32 md:h-44 drop-shadow-2xl" />
       </section>
-      {/* Kategori slider */}
-      <nav className="w-full py-4 px-2 overflow-x-auto flex gap-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 rounded-xl shadow mb-6">
-        {['Tümü','Restoran','Cafe','Otel','Tarihi Mekan','Bar','Pastane','Fast Food','Lahmacun','Dondurma','Alışveriş','Spor','Eğlence','Sağlık'].map(cat => (
+      {/* Kategori slider - sadeleştirilmiş */}
+      <nav className="w-full py-3 px-2 overflow-x-auto flex gap-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 rounded-xl shadow mb-6">
+        {['Tümü','Restoran','Cafe','Otel','Tarihi Mekan','Bar','Pastane','Fast Food','Dondurma','Alışveriş','Spor','Eğlence'].map(cat => (
           <button
             key={cat}
-            className={`px-5 py-2 rounded-full font-semibold transition-colors whitespace-nowrap shadow ${selectedCategory === cat ? 'bg-blue-600 dark:bg-blue-700 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-blue-100 dark:hover:bg-blue-900'}`}
+            className={`px-4 py-2 rounded-full font-medium transition-colors whitespace-nowrap shadow ${selectedCategory === cat ? 'bg-blue-600 dark:bg-blue-700 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-blue-100 dark:hover:bg-blue-900'}`}
             onClick={() => handleFilter(cat)}
           >
             {cat}
@@ -108,11 +106,8 @@ export default function Page() {
           <MapView businesses={businesses} />
         </div>
       </div>
-      {/* Ziyaretçi sayaç bileşeni */}
-      <footer className="w-full text-center py-6 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 mt-12 rounded-t-2xl shadow-lg">
-        <span className="text-lg font-semibold">Siteye toplam <b>{visitorCount}</b> kişi girdi.</span>
-      </footer>
+  {/* Ziyaretçi sayaç bileşeni */}
+  <VisitorCounterFooter />
     </div>
   );
 }
-// ...existing code...
