@@ -1,15 +1,15 @@
 
 
-"use client";
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import MapView from './components/MapView';
 import Image from 'next/image';
 import VisitorCounterFooter from './components/VisitorCounterFooter';
 
 
 export default function Page() {
-  // ...tüm state ve fonksiyonlar...
-  // Sayaç işlemini SSR'den ayırmak için alt bileşene taşıyoruz
+  // Tema için darkMode state
+  const [darkMode, setDarkMode] = useState(false);
   return (
     <div className={darkMode ? 'dark bg-gradient-to-br from-gray-900 via-blue-900 to-gray-800 text-white min-h-screen' : 'bg-gradient-to-br from-white via-blue-50 to-gray-100 text-gray-900 min-h-screen'}>
       {/* Header */}
